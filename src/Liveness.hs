@@ -25,12 +25,24 @@ data Quadruple =
     | Star Operand Operand Operand              -- x[y] := z
     deriving (Eq, Show)
 
-type Code = [Quadruple]
+type Program = [Quadruple]
 
-program :: Code
+program :: Program
 program =
-  [ Assign (Temp "w") (Const 0)
-  ,  Assign (Temp "x") (Const 1) ]
+  [ Assign (Temp "b") (Const 1)
+  , Assign (Temp "a") (Temp "b")
+  , Assign (Temp "g") (Const 2)
+  , Assign (Temp "d") (Const 3)
+  , Binary Multiply (Temp "c") (Temp "g") (Temp "g")
+  , Binary Add (Temp "e") (Temp "a") (Temp "d")
+  , Binary Add (Temp "b") (Temp "c") (Temp "c")
+  , Binary Multiply (Temp "f") (Temp "e") (Temp "e")
+  , Binary Add (Temp "h") (Temp "e") (Temp "e")
+  , Assign (Temp "h") (Temp "b")
+  , Binary Add (Temp "h") (Temp "h") (Temp "f")
+  , Assign (Temp "g") (Temp "h")
+  , Par (Temp "g")
+  , Call "write" (Const 1) ]
 
 toVariableNames :: [Operand] -> [Name]
 toVariableNames (o:os) = case o of
@@ -69,3 +81,9 @@ def Ret = Set.empty
 def (Fret x) = Set.empty
 def (Ldar x y z) = Set.fromList $ toVariableNames [x]
 def (Star x y z) = Set.fromList $ toVariableNames [x]
+
+-- get the set of variables live before each statement
+live :: Program -> [(Quadruple, Set.Set Name)]
+live [q] = [(q, use q)]
+live (q:qs) = (q, Set.union (use q) (out Set.\\ def q)) : (successor,out) : ls
+              where ((successor,out):ls) = live qs
